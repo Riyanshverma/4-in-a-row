@@ -1,0 +1,35 @@
+# dependencies (bun install)
+node_modules
+
+# build output
+dist
+dist-ssr
+
+# env files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# code coverage
+coverage
+
+# caches
+.eslintcache
+*.tsbuildinfo
+.vite
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
+*.local
