@@ -2,7 +2,7 @@ import { app } from "./app/app"
 
 async function startServer() {
   try {
-    await app.listen({ port: Bun.env.PORT, host: '0.0.0.0' }, (_, address) => {
+    await app.listen({ port: Bun.env.PORT, host: '0.0.0.0' }, (_err, address) => {
       console.info(`Server listening on ${address}`);
     });
   } catch (error) {
