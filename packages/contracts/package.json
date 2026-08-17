@@ -1,8 +1,14 @@
 {
   "name": "@workspace/contracts",
-  "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
