@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import { Button } from "@workspace/ui/components/button"
 import { ArrowRight } from "@workspace/ui/icons"
 import { cn } from "@workspace/ui/lib/utils"
@@ -9,7 +10,7 @@ interface PlayNowButtonProps {
 
 export function PlayNowButton({ className, size = "default" }: PlayNowButtonProps) {
   return (
-    <Button size={size} className={cn("group/play", className)}>
+    <Button size={size} className={cn("group/play", className)} render={<Link to="/choose-game" />}>
       Play Now
       <ArrowRight
         data-icon="inline-end"

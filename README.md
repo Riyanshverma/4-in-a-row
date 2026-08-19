@@ -62,8 +62,8 @@ falls to the lowest empty cell in that column.
 
 | # | Feature | Behaviour |
 |---|---------|-----------|
-| 1 | **Matchmaking** | Player enters a username and joins a queue. Paired with the next waiting player. |
-| 2 | **Bot fallback** | If no opponent arrives within **10 seconds**, a bot starts the game instead. |
+| 1 | **Matchmaking** | Player picks Multiplayer, joins a queue. Paired with the next waiting player. |
+| 2 | **Bot fallback** | If no opponent arrives within **60 seconds**, a bot starts the game instead, at **medium** difficulty. |
 | 3 | **Competitive bot** | Minimax with alpha-beta pruning. Blocks immediate losses, takes immediate wins, plays positionally otherwise. Never random. |
 | 4 | **Real-time play** | Socket.io. Both clients see every move immediately. |
 | 5 | **Reconnection** | A disconnected player has **30 seconds** to rejoin the same game. After that the game is forfeited and the opponent wins. |
@@ -78,9 +78,10 @@ falls to the lowest empty cell in that column.
 |---|---------|-----------|
 | 10 | **AI assistant** | PvP only. Explains the best move, names threats, answers follow-up questions about the position. Streamed token by token over SSE. |
 | 11 | **Hint budget** | 3 hints per player per game. The opponent is notified when a hint is used and how many remain. |
-| 12 | **Difficulty selector** | Easy / Medium / Hard, chosen before queueing. Sets bot search depth (2 / 5 / 8) if the bot ends up playing. |
+| 12 | **Difficulty selector** | Easy / Medium / Hard, chosen only in Single (Bot) mode. Sets bot search depth (2 / 5 / 8). PvP-queue bot fallback is fixed at medium. |
 | 13 | **Move timer** | 30 seconds per move. On expiry the engine plays for you (auto-pilot). Three consecutive auto-moves forfeits the game. |
 | 14 | **Game replay** | Moves are stored as rows, so any finished game can be replayed move by move. |
+| 15 | **Friends mode** | Create a room, get a 6-char code, share it. Friend joins by entering the code. 5-minute room timer; expires or creator disconnects → room destroyed immediately. Strictly 1-in/1-out, no difficulty (two humans). |
 
 ---
 
@@ -169,16 +170,17 @@ One writer per prefix. FastAPI reads `game:*` but never writes it.
 
 | Key | Type | Writer | TTL | Contents |
 |-----|------|--------|-----|----------|
-| `game:{gameId}` | hash | Fastify | 2h | board, turn, players, status, difficulty, moveDeadline |
-| `queue:waiting` | list | Fastify | — | players awaiting a match |
+| `game:{gameId}` | hash | Fastify | 2h | board, turn, players, status, mode, difficulty, moveDeadline |
+| `queue:waiting` | list | Fastify | — | players awaiting a PvP match |
+| `room:{code}` | hash | Fastify | **5min** (until joined) | Friends-mode room: creator, status, gameId once matched |
 | `player:{playerId}:game` | string | Fastify | 2h | current gameId, for reconnect lookup |
 | `disconnect:{gameId}:{playerId}` | string | Fastify | **30s** | presence of this key means "grace period active" |
 | `leaderboard` | zset | Fastify | — | wins, scored per `playerId` |
 | `hint:{gameId}:{playerId}` | string | FastAPI | 2h | hints used (max 3) |
 | `chat:{gameId}:{playerId}` | list | FastAPI | 2h | conversation turns |
 
-Two requirements map directly onto Redis TTL rather than application timers: the 30-second
-reconnect window and the 2-hour abandoned-game cleanup.
+Three requirements map directly onto Redis TTL rather than application timers: the 30-second
+reconnect window, the 5-minute Friends-room window, and the 2-hour abandoned-game cleanup.
 
 ### Statelessness
 
@@ -363,7 +365,7 @@ The leaderboard is served from the Redis sorted set for reads and derived from
 
 ## Sequence Flows
 
-### 1. Matchmaking — player found
+### 1. Multiplayer (PvP queue) — player found
 
 ```
 Player A                Fastify              Redis                Player B
@@ -372,7 +374,7 @@ Player A                Fastify              Redis                Player B
    │                       ├── LPUSH queue ────►                     │
    │                       │                   │                     │
    ◄── queued ─────────────┤                   │                     │
-   │                  [10s timer armed]        │                     │
+   │                  [60s timer armed]        │                     │
    │                       │                   ◄──── join {username} ┤
    │                       ├── RPOP queue ─────►                     │
    │                  [timer cancelled]        │                     │
@@ -381,26 +383,70 @@ Player A                Fastify              Redis                Player B
    │        {gameId, yourDisc, opponent, turn} │                     │
 ```
 
-### 2. Matchmaking — timeout, bot takes over
+Multiplayer is picked explicitly on the Choose Game screen. No difficulty is chosen for this mode —
+there's nothing to apply it to unless the queue times out.
+
+### 2. Multiplayer — timeout, bot takes over
 
 ```
 Player A                Fastify              Redis            Engine
    │                       │                   │                 │
-   ├── join {username,     │                   │                 │
-   │        difficulty} ───►                   │                 │
+   ├── join {username} ────►                   │                 │
    │                       ├── LPUSH queue ────►                 │
    ◄── queued ─────────────┤                   │                 │
-   │                  [10 seconds pass]        │                 │
+   │                  [60 seconds pass]        │                 │
    │                       ├── LREM queue ─────►                 │
    │                       ├── HSET game:{id}  │                 │
-   │                       │   mode=bot ───────►                 │
+   │                       │   mode=bot, difficulty=medium ──────►
    ◄── game:start ─────────┤                   │                 │
    │   {opponent: "Bot (medium)"}              │                 │
 ```
 
-The difficulty the player chose before queueing is the difficulty the bot uses.
+The Multiplayer queue always falls back to a **medium**-difficulty bot after 60 seconds — this is a
+fixed default, not player-chosen, since Multiplayer has no difficulty picker.
 
-### 3. A move, and the bot's reply
+### 3. Single (Bot) — direct start, no queue
+
+```
+Player               Fastify              Engine
+   │                    │                    │
+   ├── join {username,  │                    │
+   │        mode: bot,  │                    │
+   │        difficulty} ►                    │
+   │                    ├── HSET game:{id}   │
+   │                    │   mode=bot ────────►
+   ◄── game:start ──────┤                    │
+   │   {opponent: "Bot (hard)"}              │
+```
+
+Single mode skips the queue entirely — difficulty is chosen up front on `/play-with-bot` and the
+match starts immediately.
+
+### 4. Friends — room created, friend joins
+
+```
+Player A (creator)      Fastify              Redis              Player B (joiner)
+   │                       │                   │                     │
+   ├── create-room ────────►                   │                     │
+   │   {username}          ├── HSET room:{code}►                     │
+   │                       │   TTL 5min        │                     │
+   ◄── room:created ───────┤                   │                     │
+   │   {code}              │                   │                     │
+   │                  [waiting, 5min timer]    │                     │
+   │                       │                   ◄──── join-room ──────┤
+   │                       │                   │      {code, username}
+   │                       ├── GET room:{code} ►                     │
+   │                  [room still open? yes]   │                     │
+   │                       ├── HSET game:{id} ─►                     │
+   │                       ├── DEL room:{code} ►                     │
+   ◄── game:start ─────────┼───────────────────┼──── game:start ─────►
+```
+
+If the 5-minute timer expires with nobody joining, the creator is bounced back to the Choose Game
+screen and `room:{code}` is deleted. If the creator disconnects before anyone joins, the room is
+destroyed immediately rather than waiting out the TTL.
+
+### 5. A move, and the bot's reply
 
 ```
 Player               Fastify            Redis           Engine          Opponent
@@ -423,7 +469,7 @@ Player               Fastify            Redis           Engine          Opponent
 
 Every move is validated server-side against Redis state. The client is never trusted.
 
-### 4. Disconnect and reconnect
+### 6. Disconnect and reconnect
 
 ```
 Player A            Fastify              Redis              Player B
@@ -458,7 +504,7 @@ If the key expires instead:
 
 Expiry is detected via Redis keyspace notifications, not a polling loop.
 
-### 5. Move timer expiry (auto-pilot)
+### 7. Move timer expiry (auto-pilot)
 
 ```
 Fastify              Redis           Engine          Both players
@@ -475,7 +521,7 @@ Fastify              Redis           Engine          Both players
    ├─ game:over {reason: timeout, winner: opponent} ──────►
 ```
 
-### 6. AI hint (PvP only)
+### 8. AI hint (PvP only)
 
 ```
 Player          FastAPI           Fastify          Redis         Ollama
@@ -517,7 +563,7 @@ Four things worth noting:
   limit holds under concurrent requests.
 - The hint request never writes game state. It is strictly a read side channel.
 
-### 7. Game end and persistence
+### 9. Game end and persistence
 
 ```
 Fastify            Redis          Postgres        Both players
@@ -547,7 +593,10 @@ ends of the wire.
 
 | Event | Payload | Notes |
 |-------|---------|-------|
-| `join` | `{ username, difficulty }` | Enters the matchmaking queue. |
+| `join` | `{ username }` | Enters the Multiplayer (PvP) matchmaking queue. |
+| `join-bot` | `{ username, difficulty }` | Starts a Single (Bot) match immediately, no queue. |
+| `create-room` | `{ username }` | Creates a Friends-mode room, returns a 6-char code. |
+| `join-room` | `{ code, username }` | Joins an existing Friends-mode room by code. |
 | `move` | `{ gameId, column }` | Server validates turn, legality, game status. |
 | `reconnect` | `{ gameId }` | JWT identifies the player. |
 | `leave` | `{ gameId }` | Explicit forfeit. |
@@ -556,7 +605,9 @@ ends of the wire.
 
 | Event | Payload |
 |-------|---------|
-| `queued` | `{ position, timeoutMs: 10000 }` |
+| `queued` | `{ position, timeoutMs: 60000 }` |
+| `room:created` | `{ code, timeoutMs: 300000 }` |
+| `room:expired` | `{}` — room's 5-minute timer elapsed with nobody joining |
 | `game:start` | `{ gameId, yourDisc, opponent, mode, turn, moveDeadline }` |
 | `move:made` | `{ column, row, disc, nextTurn, moveDeadline, wasAuto }` |
 | `game:over` | `{ winner, reason, finalBoard }` |
