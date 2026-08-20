@@ -78,7 +78,7 @@ export const STEPS: Step[] = [
     icon: UserPlus,
     step: 1,
     title: "Enter a username",
-    description: "No account required — just pick a name and you're in the queue.",
+    description: "No account required — just pick a name and choose how you want to play.",
   },
   {
     icon: MousePointerClick,
@@ -104,19 +104,25 @@ export interface GameMode {
   title: string
   description: string
   badge: string
+  difficulties?: string[]
 }
 
-export const GAME_MODES: { pvp: GameMode; bot: GameMode & { difficulties: string[] } } = {
-  pvp: {
-    title: "Player vs Player",
-    description: "Get matched with another live player and race to four in a row in real time.",
-    badge: "Live",
-  },
-  bot: {
-    title: "Player vs Bot",
-    description: "No opponent online? Play an AI bot instantly, tuned to your preferred difficulty.",
+export const GAME_MODES: { single: GameMode; friends: GameMode; multiplayer: GameMode } = {
+  single: {
+    title: "Single",
+    description: "Play an AI bot instantly, tuned to your preferred difficulty.",
     badge: "Instant",
     difficulties: ["Easy", "Medium", "Hard"],
+  },
+  friends: {
+    title: "Play with Friends",
+    description: "Create a room and share the code, or join a friend's room to play together.",
+    badge: "Private",
+  },
+  multiplayer: {
+    title: "Multiplayer",
+    description: "Get matched with another live player and race to four in a row in real time.",
+    badge: "Live",
   },
 }
 
@@ -156,7 +162,7 @@ export interface FAQItem {
 export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Do I need to make an account?",
-    answer: "No. Enter a username and you're straight into the queue. Accounts may come later, but they're not required to play.",
+    answer: "No. Enter a username and pick a mode — Single, Friends, or Multiplayer. Accounts may come later, but they're not required to play.",
   },
   {
     question: "What happens if I lose connection mid-game?",
@@ -164,7 +170,7 @@ export const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: "How does the AI opponent work?",
-    answer: "The bot plays at three difficulty levels you choose before queueing. It's a separate system from the in-match AI hints, which are available regardless of who your opponent is.",
+    answer: "In Single mode you pick from three difficulty levels before the match starts. It's a separate system from the in-match AI hints, which are available regardless of who your opponent is.",
   },
   {
     question: "Is this free to play?",

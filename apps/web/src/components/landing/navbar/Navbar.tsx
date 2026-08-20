@@ -11,11 +11,6 @@ import { LogoMark } from "@/assets/icons/logo-mark"
 import { PlayNowButton } from "@/components/shared/PlayNowButton"
 import { ThemeToggle } from "@/components/shared/ThemeToggle"
 
-const NAV_LINKS = [
-  { label: "How to Play", href: "#how-to-play" },
-  { label: "Leaderboard", href: "#leaderboard" },
-]
-
 export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
@@ -27,7 +22,10 @@ export function Navbar() {
 
         <NavigationMenu className="hidden md:flex">
           <NavigationMenuList className="gap-6">
-            {NAV_LINKS.map((link) => (
+            {[
+              { label: "How to Play", href: "#how-to-play" },
+              { label: "Leaderboard", href: "#leaderboard" },
+            ].map((link) => (
               <NavigationMenuItem key={link.href}>
                 <NavigationMenuLink
                   href={link.href}
@@ -55,7 +53,10 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="right" className="flex flex-col gap-6 p-6">
               <nav className="flex flex-col gap-4">
-                {NAV_LINKS.map((link) => (
+                {[
+                  { label: "How to Play", href: "#how-to-play" },
+                  { label: "Leaderboard", href: "#leaderboard" },
+                ].map((link) => (
                   <a
                     key={link.href}
                     href={link.href}
