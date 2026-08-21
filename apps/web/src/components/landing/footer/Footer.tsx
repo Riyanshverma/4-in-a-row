@@ -4,7 +4,7 @@ import { FOOTER_LINKS } from "@/lib/landing-data"
 
 export function Footer() {
   return (
-    <footer className="mx-auto max-w-[1280px] px-6 py-12">
+    <footer className="mx-auto w-full max-w-[1280px] px-6 py-12">
       <Separator className="mb-8" />
       <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">

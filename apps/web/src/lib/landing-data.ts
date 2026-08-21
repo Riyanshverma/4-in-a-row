@@ -105,6 +105,7 @@ export interface GameMode {
   description: string
   badge: string
   difficulties?: string[]
+  href?: string
 }
 
 export const GAME_MODES: { single: GameMode; friends: GameMode; multiplayer: GameMode } = {
@@ -113,16 +114,19 @@ export const GAME_MODES: { single: GameMode; friends: GameMode; multiplayer: Gam
     description: "Play an AI bot instantly, tuned to your preferred difficulty.",
     badge: "Instant",
     difficulties: ["Easy", "Medium", "Hard"],
+    href: "/play-with-bot",
   },
   friends: {
     title: "Play with Friends",
     description: "Create a room and share the code, or join a friend's room to play together.",
     badge: "Private",
+    href: "/play-with-friends",
   },
   multiplayer: {
     title: "Multiplayer",
     description: "Get matched with another live player and race to four in a row in real time.",
     badge: "Live",
+    href: "/play-with-player",
   },
 }
 

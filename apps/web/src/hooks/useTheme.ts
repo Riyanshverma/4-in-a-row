@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
+// TODO: Use zustand for storing the key-value pairs in localStorage instead of this custom hook. This will allow us to use the same state across multiple components without having to pass it down through props or context.
+
 type Theme = "dark" | "light"
 
 function getInitialTheme(): Theme {

@@ -9,7 +9,7 @@ export function useScrollReveal<T extends HTMLElement>({ index = 0 }: UseScrollR
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   const ref = useRef<T | null>(null)
-  const [revealed, setRevealed] = useState(prefersReducedMotion)
+  const [revealed, setRevealed] = useState<boolean>(prefersReducedMotion)
 
   useEffect(() => {
     if (prefersReducedMotion) return

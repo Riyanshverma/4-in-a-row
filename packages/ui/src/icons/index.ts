@@ -25,4 +25,7 @@ export {
   Clock,
   Lightbulb,
   Crown,
+  Search,
+  Copy,
+  ArrowLeft,
 } from "lucide-react"

@@ -11,9 +11,9 @@ export function useAnimatedCounter(
 ) {
   const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
-  const [value, setValue] = useState(startOnView && !prefersReducedMotion ? 0 : target)
+  const [value, setValue] = useState<number>(startOnView && !prefersReducedMotion ? 0 : target)
   const ref = useRef<HTMLElement | null>(null)
-  const hasRun = useRef(false)
+  const hasRun = useRef<boolean>(false)
 
   useEffect(() => {
     if (!startOnView || prefersReducedMotion) return
